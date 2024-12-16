@@ -1,10 +1,13 @@
 name: E2E Tests
 
+# Add concurrency group to cancel previous runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +15,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.39.0-jammy
+      image: mcr.microsoft.com/playwright:v1.48.2-jammy
 
     services:
       redis:
@@ -20,16 +23,13 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
       postgres:
         image: postgres:14
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: celluloid
+          POSTGRES_DB: espectateur
         ports:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
@@ -39,18 +39,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - uses: pnpm/action-setup@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: 'yarn'
-      - run: yarn install --frozen-lockfile
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - run: pnpm install
 
       - name: Build apps
         run: |
           cp .env.ci .env
-          yarn build --filter=frontend --filter=backend
+          pnpm build
 
       - name: Run Playwright tests
         # with workground https://github.com/microsoft/playwright/issues/6500

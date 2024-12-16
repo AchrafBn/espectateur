@@ -2,64 +2,70 @@
   "name": "@celluloid/prisma",
   "version": "3.0.0",
   "license": "MIT",
+  "private": true,
   "homepage": "https://celluloid.huma-num.fr",
   "repository": {
     "type": "git",
     "url": "https://github.com/celluloid-camp/celluloid.git",
-    "directory": "packages/passport"
+    "directory": "packages/prisma"
   },
   "bugs": {
     "url": "https://github.com/udecode/plate/celluloid/issues"
   },
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist/**/*"
-  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./src/env.ts"
+    }
+  },
   "prisma": {
     "schema": "schema.prisma",
     "seed": "tsx src/seed.ts"
   },
   "scripts": {
-    "build": "yarn run generate && tsup",
-    "clean": "rimraf .turbo node_modules dist",
-    "dev": "tsup --watch --silent",
-    "setup": "yarn db:push && yarn migrate:init && migrate:deploy && yarn generate",
-    "migrate": "yarn prisma migrate",
-    "db": "yarn prisma db",
-    "migrate:init": "yarn prisma migrate resolve --applied 0_init",
-    "migrate:deploy": "yarn prisma migrate deploy",
-    "migrate:dev": "yarn prisma migrate dev",
-    "db:push": "yarn prisma db push",
+    "build": "pnpm run generate && tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc",
+    "setup": "pnpm db:push && pnpm migrate:init && migrate:deploy && pnpm generate",
+    "migrate": "pnpm prisma migrate",
+    "db": "pnpm prisma db",
+    "migrate:init": "pnpm prisma migrate resolve --applied 0_init",
+    "migrate:deploy": "pnpm prisma migrate deploy",
+    "migrate:dev": "pnpm prisma migrate dev",
+    "db:push": "pnpm prisma db push",
     "seed": "tsx src/seed.ts",
-    "generate": "yarn prisma generate",
+    "generate": "pnpm prisma generate",
     "lint": "eslint \"src/**/*.ts\"",
-    "prebuild": "yarn run generate",
-    "predev": "yarn run generate",
-    "studio": "yarn prisma studio",
-    "prisma": "npx prisma",
+    "prebuild": "pnpm run generate",
+    "predev": "pnpm run generate",
+    "studio": "pnpm prisma studio",
+    "prisma": "pnpx prisma",
     "update-metadata": "tsx ./src/update-metadata.ts",
     "migrate-sharecode": "tsx ./src/migrate-sharecode.ts",
     "tsx": "tsx"
   },
   "devDependencies": {
-    "@celluloid/config": "*",
-    "@celluloid/utils": "*",
+    "@celluloid/config": "workspace:*",
+    "@celluloid/utils": "workspace:*",
     "@types/dotenv": "^6.0.0",
     "@types/node-fetch": "^2.6.7",
     "@types/randomcolor": "^0.5.7",
     "dotenv-cli": "^7.3.0",
     "eslint": "^8.50.0",
-    "prisma": "^5.6.0",
+    "prisma": "^6.0.1",
     "rimraf": "^5.0.1",
-    "tsup": "^7.2.0",
-    "typescript": "^5.2.2"
+    "tsup": "^8.3.0",
+    "typescript": "catalog:"
   },
   "dependencies": {
-    "@prisma/client": "^5.4.2",
+    "@prisma/client": "^6.0.1",
     "randomcolor": "^0.6.2",
-    "tsx": "^3.14.0"
+    "tsx": "^4.19.1",
+    "zod": "catalog:"
   }
 }

@@ -11,39 +11,34 @@ import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
-import * as React from "react";
+import type * as React from "react";
 import { Suspense, useCallback } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Trans, useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useSession } from "~/lib/auth-client";
 
 import { ProjectGrid } from "~components/home/ProjectGrid";
 import { LogoSign } from "~components/LogoSign";
 import { StudentsIcon } from "~components/StudentsIcon";
 import { TeacherIcon } from "~components/TeacherIcon";
-import { trpc } from "~utils/trpc";
 
 export const HomePage: React.FC = () => {
-  const { isError } = trpc.user.me.useQuery(
-    {},
-    { retry: false, keepPreviousData: false, cacheTime: 0 }
-  );
-
-  const location = useLocation();
+  const { data: session } = useSession();
 
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleJoin = useCallback(() => {
-    if (isError) {
+    if (!session) {
       navigate("/signup-student", { state: { backgroundLocation: "/" } });
     } else {
       navigate("/join", { state: { backgroundLocation: "/" } });
     }
-  }, [isError, navigate]);
+  }, [session, navigate]);
 
   const handleCreate = () => {
-    navigate(`/create`);
+    navigate("/create");
   };
 
   return (
@@ -94,7 +89,7 @@ export const HomePage: React.FC = () => {
                     gutterBottom={true}
                     fontFamily={"abril_fatfaceregular"}
                   >
-                    <Trans i18nKey={"home.tutoriel.subtitle"}></Trans>
+                    <Trans i18nKey={"home.tutoriel.subtitle"} />
                   </Typography>
 
                   <Typography variant="subtitle1" gutterBottom={true}>
@@ -227,7 +222,7 @@ export const HomePage: React.FC = () => {
           {({ reset }) => (
             <ErrorBoundary
               onReset={reset}
-              fallbackRender={({ resetErrorBoundary, error }) => (
+              fallbackRender={({ resetErrorBoundary }) => (
                 <Fade in={true} appear={true}>
                   <Typography
                     variant="h6"

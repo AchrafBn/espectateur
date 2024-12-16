@@ -6,12 +6,21 @@
   "repository": "http://github.com/celluloid-edu/celluloid",
   "author": "Younes Benaomar <younes.benaomar@gmail.com>",
   "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch --silent"
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc"
   },
   "devDependencies": {
-    "tsup": "^7.2.0",
-    "typescript": "^5.2.2"
+    "tsup": "^8.3.0",
+    "typescript": "catalog:",
+    "@celluloid/config": "workspace:*"
   }
 }

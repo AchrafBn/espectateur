@@ -1,60 +1,45 @@
-FROM  node:20-alpine  AS custom-node
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat ffmpeg bash openssl openssl-dev
+RUN npm install -g turbo pnpm
 
-RUN apk add -f --update --no-cache --virtual .gyp nano bash libc6-compat python3 make g++ caddy \
-  && yarn global add turbo pm2 \
-  && apk del .gyp
-
-
-FROM custom-node AS pruned
+FROM base AS pruned
 WORKDIR /app
-ARG APP
-
 COPY . .
+RUN turbo prune --scope=frontend --docker
 
-RUN turbo prune --scope=$APP --docker
-
-FROM custom-node AS installer
+FROM base AS installer
 WORKDIR /app
-ARG APP
 
 COPY --from=pruned /app/out/json/ .
-COPY --from=pruned /app/out/yarn.lock /app/yarn.lock
+COPY --from=pruned /app/out/pnpm-lock.yaml /app/pnpm-lock.yaml
 
 RUN \
-  --mount=type=cache,target=/usr/local/share/.cache/yarn/v6,sharing=private \
-  yarn
+  --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=private \
+  pnpm install --frozen-lockfile
 
-FROM custom-node as builder
+FROM base as builder
 WORKDIR /app
-ARG APP
-ARG API_URL
 ARG COMMIT
-
 ENV COMMIT=${COMMIT}
-ENV API_URL=${API_URL}
 
 COPY --from=installer --link /app .
-
 COPY --from=pruned /app/out/full/ .
 COPY turbo.json turbo.json
 COPY tsconfig.json tsconfig.json
 
-RUN turbo run build --no-cache --filter=${APP}
+RUN turbo run build --no-cache
 
 RUN \
-  --mount=type=cache,target=/usr/local/share/.cache/yarn/v6,sharing=private \
-  yarn --frozen-lockfile
+  --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=private \
+  pnpm install --frozen-lockfile
 
-#############################################
-FROM node:20-alpine  AS runner
+FROM base AS runner
 WORKDIR /app
-ARG APP=admin
-ARG START_COMMAND=dev
-
-ENV APP=${APP}
-ENV START_COMMAND=${START_COMMAND}
-ENV PORT=3000
+RUN apk add --no-cache ffmpeg curl bash openssl openssl-dev
 
 COPY --from=builder /app .
 
-CMD yarn workspace ${APP} ${START_COMMAND}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
+
+CMD ["sh", "-c", "pnpm prisma migrate:deploy & pnpm frontend start"]

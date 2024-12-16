@@ -1,6 +1,6 @@
 import "dayjs/locale/fr"; // import locale
 
-import { CssBaseline, Dialog, ThemeProvider } from "@mui/material";
+import { CssBaseline, ThemeProvider } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createWSClient, httpBatchLink, splitLink, wsLink } from "@trpc/client";
@@ -16,7 +16,6 @@ import React, { Suspense, useCallback, useState } from "react";
 import { initReactI18next } from "react-i18next";
 import {
   BrowserRouter,
-  createBrowserRouter,
   Navigate,
   Route,
   Routes,
@@ -53,13 +52,7 @@ import { SharePage } from "./pages/share";
 import { TermsAndConditions } from "./pages/terms";
 import { createTheme } from "./theme";
 
-const API_URL = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL
-  : "/trpc";
-
-const WS_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${
-  location.host
-}/trpc`;
+const API_URL = "/api/trpc";
 
 dayjs.extend(relativeTime);
 dayjs.extend(isLeapYear); // use plugin
@@ -168,28 +161,37 @@ const App = () => {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        splitLink({
-          condition(op) {
-            // check for operation type
-            return op.type == "subscription";
+        httpBatchLink({
+          url: "/api/trpc",
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: "include",
+            });
           },
-          // when condition is true, use normal request
-          true: wsLink({
-            client: createWSClient({
-              url: WS_URL,
-            }),
-          }),
-          // when condition is false, use batching
-          false: httpBatchLink({
-            url: API_URL,
-            fetch(url, options) {
-              return fetch(url, {
-                ...options,
-                credentials: "include",
-              });
-            },
-          }),
         }),
+        // splitLink({
+        //   condition(op) {
+        //     // check for operation type
+        //     return op.type === "subscription";
+        //   },
+        //   // when condition is true, use normal request
+        //   true: wsLink({
+        //     client: createWSClient({
+        //       url: WS_URL,
+        //     }),
+        //   }),
+        //   // when condition is false, use batching
+        //   false: httpBatchLink({
+        //     url: API_URL,
+        //     fetch(url, options) {
+        //       return fetch(url, {
+        //         ...options,
+        //         credentials: "include",
+        //       });
+        //     },
+        //   }),
+        // }),
       ],
     })
   );

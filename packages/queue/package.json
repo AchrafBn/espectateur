@@ -1,0 +1,51 @@
+{
+  "name": "@celluloid/queue",
+  "version": "3.0.0",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://celluloid.huma-num.fr",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/celluloid-camp/celluloid.git",
+    "directory": "packages/queue"
+  },
+  "bugs": {
+    "url": "https://github.com/udecode/plate/celluloid/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./src/env.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc"
+  },
+  "dependencies": {
+    "@celluloid/config": "workspace:*",
+    "@celluloid/emails": "workspace:*",
+    "@celluloid/prisma": "workspace:*",
+    "@celluloid/types": "workspace:*",
+    "@celluloid/utils": "workspace:*",
+    "@mgcrea/prisma-queue": "^1.11.1",
+    "@react-email/components": "0.0.31",
+    "@t3-oss/env-core": "^0.11.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "minio": "^7.1.3",
+    "nodemailer": "^6.9.9",
+    "zod": "^3.23.8",
+    "zx": "^8.2.4"
+  },
+  "devDependencies": {
+    "@celluloid/config": "workspace:*",
+    "@types/fluent-ffmpeg": "^2",
+    "typescript": "catalog:"
+  }
+}

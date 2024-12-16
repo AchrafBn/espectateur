@@ -38,22 +38,19 @@ Celluloid is designed to run on a Linux server. Proficiency with the command-lin
 
 - Install the latest version of [Git](https://git-scm.com/).
 - Install the latest version of [Node.js](https://nodejs.org/en/).
-- Install the latest version of [Yarn](https://yarnpkg.com/en/) and use it instead of NPM. 
+- Install the latest version of [Pnpm](https://pnpm.io/) and use it instead of NPM. 
 
-The project is organized as a [monorepo](https://blog.scottlogic.com/2018/02/23/javascript-monorepos.html), so Yarn is required to leverage [Yarn workspace](https://yarnpkg.com/blog/2017/08/02/introducing-workspaces/).
+The project is organized as a [monorepo](https://blog.scottlogic.com/2018/02/23/javascript-monorepos.html), so Pnpm is required to leverage [pnpm workspace](https://pnpm.io/workspaces).
 
 ```
 .
 ├── apps/                # Main application containers
 │   ├── frontend/        # Frontend application code
-│   ├── backend/         # Backend application code
-│   └── admin/           # Admin panel code
 ├── packages/            # Shared packages
-│   ├── config/          # Configuration settings and files
 │   ├── i18n/            # Internationalization settings and translations
-│   ├── passport/        # Passport authentication settings
-│   ├── prisma/          # Prisma ORM configurations and schema
-│   ├── trpc/            # tRPC settings and utilities
+│   ├── auth/            # Authentication settings
+│   ├── db/              # Prisma ORM configurations and schema
+│   ├── api/             # tRPC settings and utilities
 │   ├── types/           # Shared TypeScript types
 │   └── utils/           # Shared utilities
 ├── tests/               # Test scripts and test-related utilities
@@ -91,7 +88,7 @@ Open your terminal and execute the following commands:
 ```bash
 git clone https://github.com/celluloid-camp/celluloid.git
 cd celluloid/
-yarn
+pnpm
 ```
 
 ### Configuration
@@ -111,7 +108,7 @@ For development purposes, you can use the provided Docker Compose [docker-compos
 At the root of your repository, run the projet in development mode:
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 This will initiate an interactive build and open the app in a browser window while continuously monitoring source files for modifications.
@@ -122,8 +119,8 @@ If everything worked without errors, you should be all set. Otherwise, please re
 Build and start the application:
 
 ```bash
-yarn build
-yarn start
+pnpm build
+pnpm start
 ```
 
 You can access your app at http://localhost:3000.
@@ -163,5 +160,6 @@ Before contributing to Celluloid's development, it's essential to familiarize yo
 
 You can still find the old Celluloid version 1 that supports YouTube videos [here](https://github.com/celluloid-camp/celluloid/releases/tag/v1).
 
+[uptime status](https://stats.uptimerobot.com/yNVrfoWzKN)
 <img width="200" alt="Celluloid is a collaborative video annotation application designed for
 educational purposes." src="./apps/frontend/src/images/about/logo-icp.jpg">

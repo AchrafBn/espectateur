@@ -1,5 +1,4 @@
 import ClearIcon from "@mui/icons-material/Clear";
-import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import KeyboardReturnIcon from "@mui/icons-material/KeyboardReturn";
 import LinkIcon from "@mui/icons-material/Link";
@@ -7,12 +6,10 @@ import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import { LoadingButton } from "@mui/lab";
 import {
   Alert,
-  Autocomplete,
   Box,
   ButtonBase,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   IconButton,
   InputAdornment,
@@ -29,6 +26,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 import * as Yup from "yup";
+import { useSession } from "~/lib/auth-client";
 
 import {
   useProjectInputIntialState,
@@ -40,8 +38,8 @@ import { AutoCompleteTags } from "~components/AutoComleteTags";
 import { StyledTitle } from "~components/typography";
 import {
   getPeerTubeVideoData,
-  PeerTubeVideoDataResult,
-  PeerTubeVideoWithThumbnail,
+  type PeerTubeVideoDataResult,
+  type PeerTubeVideoWithThumbnail,
 } from "~services/peertube";
 import { ERR_ALREADY_EXISTING_PROJECT } from "~utils/Constants";
 // import { formatDuration } from "~utils/DurationUtils";
@@ -131,7 +129,7 @@ const PeerTubeVideoUrlForm: React.FC<PeerTubeVideoUrlFormProps> = ({
         value={formik.values.url}
         placeholder={t("home.addVideo") || ""}
         onChange={formik.handleChange}
-        disabled={formik.status == "submited"}
+        disabled={formik.status === "submited"}
         onBlur={formik.handleBlur}
         error={formik.touched.url && Boolean(formik.errors.url)}
         helperText={formik.touched.url && formik.errors.url}
@@ -143,7 +141,7 @@ const PeerTubeVideoUrlForm: React.FC<PeerTubeVideoUrlFormProps> = ({
             </InputAdornment>
           ),
           endAdornment:
-            formik.status == "submited" ? (
+            formik.status === "submited" ? (
               <InputAdornment position="end">
                 {query.isFetched && query.data && query.data.isPlaylist ? (
                   <Chip label={"Playlist"} size="small" variant="outlined" />
@@ -186,7 +184,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { data: user } = trpc.user.me.useQuery();
+  const { data: session } = useSession();
 
   const playlistMutation = trpc.playlist.add.useMutation();
   const projectMutation = trpc.project.add.useMutation();
@@ -211,6 +209,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
     public: Yup.bool(),
     collaborative: Yup.bool(),
     videoInfo: Yup.object().required(),
+    shared: Yup.bool(),
   });
 
   const formik = useFormik({
@@ -222,7 +221,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
     validationSchema: validationSchema,
     onSubmit: async (values) => {
       setIsSubmitting(true);
-      if (!user) {
+      if (!session) {
         setInitialValue({
           title: values.title,
           description: values.description,
@@ -230,6 +229,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
           collaborative: values.collaborative,
           keywords: values.keywords,
           videoInfo: data,
+          shared: values.shared,
         });
         navigate("/login", { state: { backgroundPath: location.pathname } });
       } else {
@@ -251,7 +251,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
               objective: "",
               levelStart: 0,
               levelEnd: 5,
-              shared: false,
+              shared: values.shared,
             });
             if (project) {
               formik.resetForm();
@@ -269,6 +269,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
                 thumbnailURL: video.thumbnailURL,
                 metadata: video.metadata,
                 keywords: values.keywords,
+                shared: values.shared,
               })),
               description: values.description,
               public: values.public,
@@ -276,7 +277,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
               objective: "",
               levelStart: 0,
               levelEnd: 5,
-              shared: false,
+              shared: values.shared,
               userId: "",
             });
             if (playlist) {
@@ -287,7 +288,7 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
             }
           }
         } catch (e) {
-          if (e.message == ERR_ALREADY_EXISTING_PROJECT) {
+          if (e.message === ERR_ALREADY_EXISTING_PROJECT) {
             formik.setFieldError(
               "title",
               humanizeError("ERR_ALREADY_EXISTING_PROJECT")
@@ -442,6 +443,43 @@ const CreateProjectForm: React.FC<{ data: PeerTubeVideoDataResult }> = ({
           </Grid>
         </Grid>
 
+
+
+        <Grid container direction="row">
+          <Grid item xs={2}>
+            <Typography
+              variant="subtitle1"
+              align="right"
+              sx={{
+                paddingTop: 1,
+              }}
+            >
+              <Trans i18nKey="project.shared" />
+            </Typography>
+          </Grid>
+          <Grid item xs={2}>
+            <Switch
+              checked={formik.values.shared}
+              data-testid="shared-switch"
+              onChange={(_, value) => {
+                formik.setFieldValue("shared", value);
+              }}
+            />
+          </Grid>
+          <Grid item xs={8}>
+            <Typography
+              variant="body2"
+              gutterBottom
+              sx={{
+                paddingTop: 1,
+              }}
+            >
+              <Trans i18nKey="project.sharedHelper" />
+            </Typography>
+          </Grid>
+        </Grid>
+
+
         <Box display={"flex"} justifyContent={"flex-end"} flex={1} mt={2}>
           <LoadingButton
             variant="contained"
@@ -501,6 +539,7 @@ const VideoSnap: React.FC<{
   video: PeerTubeVideoWithThumbnail;
   onDelete: () => void;
 }> = ({ video, onDelete }) => {
+  console.log(video);
   return (
     <Grid item sx={{ borderRadius: 1, overflow: "hidden", m: 0, p: 0 }}>
       <Box sx={{ position: "absolute", zIndex: 1 }} width={THUMBNAIL_WIDTH}>
@@ -583,7 +622,7 @@ export const CreateProjectPage: React.FC = () => {
   const resetSavedValue = userResetProjectInputIntialState();
 
   useEffect(() => {
-    if (savedValue && savedValue.videoInfo && !videoInfo) {
+    if (savedValue?.videoInfo && !videoInfo) {
       setVideoInfo(savedValue.videoInfo);
     }
   }, [savedValue, videoInfo]);
@@ -594,8 +633,8 @@ export const CreateProjectPage: React.FC = () => {
 
   const handleDelete = (index: number) => {
     if (videoInfo) {
-      const newVideos = videoInfo.videos.filter((_, i) => i != index);
-      if (newVideos.length == 0) {
+      const newVideos = videoInfo.videos.filter((_, i) => i !== index);
+      if (newVideos.length === 0) {
         setVideoInfo(null);
       } else {
         setVideoInfo({
@@ -631,7 +670,7 @@ export const CreateProjectPage: React.FC = () => {
   return (
     <Box
       sx={{
-        paddingX: { md: 10, lg: 20 },
+        paddingX: { md: 20, lg: 40 },
         paddingTop: 1,
         paddingBottom: 5,
         backgroundColor: "brand.orange",

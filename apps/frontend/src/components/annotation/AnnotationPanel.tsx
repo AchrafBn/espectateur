@@ -2,9 +2,10 @@ import { useParentSize } from "@cutting/use-get-parent-size";
 import InfoIcon from "@mui/icons-material/Info";
 import SpeakerNotesIcon from "@mui/icons-material/SpeakerNotes";
 import ViewTimelineIcon from "@mui/icons-material/ViewTimeline";
+import BookmarksIcon from "@mui/icons-material/Bookmarks";
 import {
   Badge,
-  BadgeProps,
+  type BadgeProps,
   Box,
   Fab,
   Grow,
@@ -12,19 +13,22 @@ import {
   Paper,
   Stack,
   styled,
+  Tab,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { grey } from "@mui/material/colors";
-import * as React from "react";
+import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { AnnotationByProjectId, ProjectById, UserMe } from "~utils/trpc";
+import type { AnnotationByProjectId, ProjectById, UserMe } from "~utils/trpc";
 
 import { AnnotationForm } from "./AnnotationForm";
 import { AnnotationItem } from "./AnnotationItem";
 import { useAnnotationHintsVisible } from "./useAnnotationEditor";
+import { TabContext, TabList, TabPanel } from "@mui/lab";
+import { ChaptersPanel } from "~components/chapters/panel";
 
 const StyledBadge = styled(Badge)<BadgeProps>(({ theme }) => ({
   "& .MuiBadge-badge": {
@@ -115,36 +119,38 @@ const AnnotationList: React.FC<
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        position: "relative",
       }}
     >
       <List
         dense={true}
         sx={{
+          flex: 1,
           overflow: "auto",
           paddingX: 2,
-          height: `${listHeight}px`,
-          maxHeight: `${listHeight}px`,
+          position: "relative",
+
+          // height: `${listHeight}px`,
+          // maxHeight: `${listHeight}px`,
           // minHeight: 600,
           // maxHeight: 600,
           "& ul": { padding: 0 },
         }}
       >
-        {annotations
-          // .flatMap((x) => [x, x, x, x, x, x, x, x])
-          .map((annotation: AnnotationByProjectId) => (
-            <AnnotationItem
-              annotation={annotation}
-              key={annotation.id}
-              user={user}
-              project={project}
-            />
-          ))}
+        {annotations.map((annotation: AnnotationByProjectId) => (
+          <AnnotationItem
+            annotation={annotation}
+            key={annotation.id}
+            user={user}
+            project={project}
+          />
+        ))}
 
-        {annotations.length == 0 && <EmptyAnnotation />}
+        {annotations.length === 0 && <EmptyAnnotation />}
       </List>
 
-      <Box ref={formRef} display={"flex"} flexDirection={"column"}>
-        {project.annotable && playerIsReady && user ? (
+      <Box display={"flex"} flexDirection={"column"}>
+        {project.annotable && user ? (
           <AnnotationForm
             duration={project.duration}
             project={project}
@@ -161,6 +167,12 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
   playerIsReady,
   ...props
 }) => {
+  const [value, setValue] = useState("1");
+
+  const handleChange = (_: React.SyntheticEvent, newValue: string) => {
+    setValue(newValue);
+  };
+
   const { t } = useTranslation();
 
   const ref = useRef<HTMLDivElement>(null);
@@ -172,53 +184,94 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
     <Paper
       ref={ref}
       sx={{
+        position: "relative",
         backgroundColor: "background.dark",
-        paddingY: 3,
-        marginX: 2,
-        marginTop: 2,
-        height: "95%",
+        height: "100%",
       }}
     >
-      <Box display="flex" flexDirection={"column"} height={height}>
+      <TabContext value={value}>
         <Box
-          display="flex"
-          flexDirection={"row"}
-          justifyContent="space-between"
-          paddingX={3}
-          alignContent={"center"}
-          alignItems={"center"}
+          sx={{
+            borderBottom: 1,
+            borderColor: grey[800],
+            marginX: 2,
+            position: "relative",
+          }}
         >
-          <Stack direction={"row"}>
-            <StyledBadge badgeContent={annotationCount} color="secondary">
-              <SpeakerNotesIcon sx={{ color: "white" }} />
-            </StyledBadge>
-            <Typography
-              variant="h6"
-              color="white"
-              sx={{ pl: annotationCount > 0 ? 2 : 1 }}
+          <Box position={"absolute"} right={0} top={20}>
+            <Tooltip
+              title={t(
+                "project.annotation.hints.label",
+                "Afficher la chronologie des annotations."
+              )}
             >
-              {t("project.annotation.title", "Annotations")}
-            </Typography>
-          </Stack>
-          <Tooltip
-            title={t(
-              "project.annotation.hints.label",
-              "Afficher la chronologie des annotations."
-            )}
-          >
-            <Fab
-              color="secondary"
-              size="small"
-              onClick={() => setHintsVisible(!hintsVisible)}
-              disabled={!playerIsReady}
-            >
-              <ViewTimelineIcon />
-            </Fab>
-          </Tooltip>
-        </Box>
+              <Fab
+                color="secondary"
+                size="small"
+                onClick={() => setHintsVisible(!hintsVisible)}
+              >
+                <ViewTimelineIcon />
+              </Fab>
+            </Tooltip>
+          </Box>
 
-        <AnnotationList playerIsReady={playerIsReady} {...props} />
-      </Box>
+          <TabList
+            onChange={handleChange}
+            aria-label="lab API tabs example"
+            textColor="secondary"
+            indicatorColor="secondary"
+          >
+            <Tab
+              icon={
+                <Badge badgeContent={annotationCount} color="secondary">
+                  <SpeakerNotesIcon />
+                </Badge>
+              }
+              iconPosition="start"
+              label={t("project.annotation.title", "Annotations")}
+              value="1"
+            />
+            <Tab
+              icon={<BookmarksIcon />}
+              iconPosition="start"
+              label={t("project.chapters.title")}
+              value="2"
+            />
+          </TabList>
+        </Box>
+        <TabPanel
+          value="1"
+          sx={{
+            height: "100%",
+            padding: 0,
+            position: "relative",
+            paddingBottom: "100px",
+          }}
+        >
+          <Box
+            display="flex"
+            flexDirection={"column"}
+            height={height}
+            sx={{
+              position: "relative",
+              height: "100%",
+            }}
+          >
+            <AnnotationList playerIsReady={playerIsReady} {...props} />
+          </Box>
+        </TabPanel>
+        <TabPanel
+          value="2"
+          sx={{
+            height: "100%",
+            padding: 0,
+            paddingBottom: "100px",
+            position: "relative",
+          }}
+        >
+          <ChaptersPanel project={props.project} user={props.user} />
+        </TabPanel>
+      </TabContext>
     </Paper>
   );
 };

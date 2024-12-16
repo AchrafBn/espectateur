@@ -49,3 +49,7 @@ node_modules/
 /playwright/.cache/
 
 
+.cache
+sandbox
+.adminjs
+.eslintcache

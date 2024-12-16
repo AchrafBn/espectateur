@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["fullTextSearchPostgres"]
   // binaryTargets = ["native", "linux-musl"]
   // output          = "./client"
 }
@@ -74,6 +74,36 @@ model Project {
   thumbnailURL String   @default("")
   metadata     Json?    @default("{}") @db.Json
   keywords     String[]
+
+  fileDownloadUrl String?
+
+  chapterJob   QueueJob? @relation(fields: [chapterJobId], references: [id])
+  chapterJobId BigInt?   @db.BigInt
+
+  chapters Chapter[]
+}
+
+model Chapter {
+  id        String @id @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String @db.Uuid
+  startTime Float
+  endTime   Float
+
+  title       String?
+  description String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  thumbnail          Storage? @relation(fields: [thumbnailStorageId], references: [id])
+  thumbnailStorageId String?  @unique @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lastEditedBy   User?   @relation(fields: [lastEditedById], references: [id])
+  lastEditedById String? @db.Uuid
+
+  @@index([projectId])
 }
 
 model Playlist {
@@ -91,21 +121,16 @@ model Playlist {
 }
 
 model User {
-  id              String          @id @unique(map: "user_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String?         @unique(map: "user_email_unique") @db.VarChar(255)
-  username        String          @unique(map: "user_username_unique") @db.VarChar(255)
-  password        String          @db.VarChar(255)
-  confirmed       Boolean         @default(false)
-  code            String?
-  codeGeneratedAt DateTime?       @db.Timestamptz(6)
-  role            UserRole?
-  extra           Json?           @default("{}")
-  annotation      Annotation[]
-  comment         Comment[]
-  project         Project[]
-  UserToProject   UserToProject[]
+  id       String  @id @unique(map: "user_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email    String? @unique(map: "user_email_unique") @db.VarChar(255)
+  username String  @unique(map: "user_username_unique") @db.VarChar(255)
 
-  playlist Playlist[]
+  annotation    Annotation[]
+  comment       Comment[]
+  project       Project[]
+  UserToProject UserToProject[]
+  role          String?
+  playlist      Playlist[]
 
   firstname String? @db.VarChar(255)
   lastname  String? @db.VarChar(255)
@@ -113,6 +138,69 @@ model User {
 
   avatar          Storage? @relation(fields: [avatarStorageId], references: [id])
   avatarStorageId String?  @unique @db.Uuid
+
+  chapters Chapter[]
+
+  name          String?
+  emailVerified Boolean @default(false)
+  image         String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  sessions Session[]
+  accounts Account[]
+
+  banned     Boolean?
+  banReason  String?
+  banExpires DateTime?
+
+  extra Json? @default("{}")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -135,5 +223,32 @@ model Storage {
   path      String
   bucket    String
   user      User?
+  chapter   Chapter?
   createdAt DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model QueueJob {
+  id          BigInt    @id @default(autoincrement()) @db.BigInt
+  queue       String
+  key         String?
+  cron        String?
+  payload     Json?
+  result      Json?
+  error       Json?
+  progress    Int       @default(0)
+  priority    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int?
+  runAt       DateTime  @default(now())
+  notBefore   DateTime?
+  finishedAt  DateTime?
+  processedAt DateTime?
+  failedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  projects    Project[]
+
+  @@unique([key, runAt])
+  @@index([queue, priority, runAt, finishedAt])
+  @@map("queue_jobs")
 }

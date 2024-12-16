@@ -1,24 +1,23 @@
 import { LoadingButton } from "@mui/lab";
-import { Alert, Box, Button, DialogActions, Stack } from "@mui/material";
+import { DialogActions, Link } from "@mui/material";
 import TextField from "@mui/material/TextField";
 import { useFormik } from "formik";
+import { useSnackbar } from "notistack";
 import { Trans, useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import * as Yup from "yup";
+import { authClient } from "~/lib/auth-client";
 
 import { useProjectInputIntialValue } from "~/state";
 import { StyledDialog } from "~components/Dialog";
 import { useRouteQuery } from "~hooks/useRouteQuery";
-import { trpc } from "~utils/trpc";
 
 export const ConfirmDialog: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const query = useRouteQuery();
+  const { enqueueSnackbar } = useSnackbar();
 
-  const utils = trpc.useContext();
-  const mutation = trpc.user.confirm.useMutation();
   const savedProjectValue = useProjectInputIntialValue();
 
   const validationSchema = Yup.object().shape({
@@ -29,6 +28,19 @@ export const ConfirmDialog: React.FC = () => {
   });
 
   const queryEmail = query.get("email") || undefined;
+
+  const handleResendCode = async () => {
+    if (queryEmail) {
+      await authClient.emailOtp.sendVerificationOtp({
+        email: queryEmail,
+        type: "sign-in", // or "email-verification", "forget-password"
+      });
+
+      enqueueSnackbar(t("confirm.resend.success", "Code envoyé"), {
+        variant: "success",
+      });
+    }
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -41,13 +53,24 @@ export const ConfirmDialog: React.FC = () => {
     validateOnBlur: true,
     validateOnChange: true,
     onSubmit: async (values) => {
+      if (!values.username) {
+        formik.setFieldError("username", t("confirm.username.required"));
+        return;
+      }
+
+      formik.setSubmitting(true);
+
       try {
-        await mutation.mutateAsync({
-          username: values.username,
-          code: values.code,
+        const { data, error } = await authClient.signIn.emailOtp({
+          email: values.username,
+          otp: values.code,
         });
 
-        utils.user.me.invalidate();
+        if (error) {
+          formik.setFieldError("error", error.message);
+          formik.setSubmitting(false);
+          return;
+        }
 
         if (savedProjectValue.videoInfo) {
           navigate("/create", { replace: true });
@@ -59,6 +82,8 @@ export const ConfirmDialog: React.FC = () => {
       } catch (e) {
         formik.setFieldError("error", e.message);
         console.log(e);
+      } finally {
+        formik.setSubmitting(false);
       }
     },
   });
@@ -87,7 +112,7 @@ export const ConfirmDialog: React.FC = () => {
             t("confirm.username.paceholder", "Email ou nom d'utilisateur") || ""
           }
           onChange={formik.handleChange}
-          disabled={formik.isSubmitting || queryEmail != undefined}
+          disabled={queryEmail !== undefined}
           onBlur={formik.handleBlur}
           error={formik.touched.username && Boolean(formik.errors.username)}
           helperText={formik.touched.username && formik.errors.username}
@@ -114,14 +139,17 @@ export const ConfirmDialog: React.FC = () => {
         />
 
         <DialogActions sx={{ marginTop: 4 }}>
+          <Link variant="body2" onClick={handleResendCode}>
+            <Trans i18nKey="confirm.button.send">Renvoyer le code ?</Trans>
+          </Link>
           <LoadingButton
             variant="contained"
             size="large"
             color="primary"
             type="submit"
             data-testid="submit"
-            loading={mutation.isLoading}
-            disabled={mutation.isLoading}
+            loading={formik.isSubmitting}
+            disabled={formik.isSubmitting}
           >
             <Trans i18nKey="confirm.button.submit">Envoyer</Trans>
           </LoadingButton>

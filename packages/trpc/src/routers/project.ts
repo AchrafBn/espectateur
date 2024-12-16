@@ -1,4 +1,4 @@
-import { Prisma, prisma, UserRole } from '@celluloid/prisma';
+import { Prisma, prisma } from '@celluloid/prisma';
 import { generateUniqueShareName } from '@celluloid/utils';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from '../trpc';
 import { PlaylistSchema } from './playlist';
 import { UserSchema } from './user';
+import { chaptersQueue } from '@celluloid/queue';
 
 export const defaultProjectSelect = Prisma.validator<Prisma.ProjectSelect>()({
   id: true,
@@ -37,6 +38,7 @@ export const defaultUserSelect = Prisma.validator<Prisma.UserSelect>()({
   avatar: {
     select: {
       id: true,
+      //@ts-expect-error dynamic
       publicUrl: true,
       path: true
     }
@@ -143,8 +145,7 @@ export const projectRouter = router({
       let nextCursor: typeof cursor | undefined = undefined;
       if (items.length > limit) {
         // Remove the last item and use it as next cursor
-
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // biome-ignore lint/style/noNonNullAssertion: <explanation>
         const nextItem = items.pop()!;
         nextCursor = nextItem.id;
       }
@@ -168,6 +169,14 @@ export const projectRouter = router({
           ...defaultProjectSelect,
           user: {
             select: defaultUserSelect
+          },
+          chapterJob: {
+            select: {
+              id: true,
+              error: true,
+              finishedAt: true,
+              progress: true,
+            }
           },
           playlist: {
             include: {
@@ -201,10 +210,10 @@ export const projectRouter = router({
 
       return {
         ...project,
-        editable: ctx.user && (ctx.user.id == project.userId || ctx.user.role == UserRole.Admin),
-        deletable: ctx.user && (ctx.user.id == project.userId || ctx.user.role == UserRole.Admin),
-        annotable: ctx.user && (ctx.user.id == project.userId || ctx.user.role == UserRole.Admin || (project.members.some(m => ctx.user && m.userId == ctx.user.id) && project.collaborative)),
-        commentable: ctx.user && (ctx.user.id == project.userId || ctx.user.role == UserRole.Admin || (project.members.some(m => ctx.user && m.userId == ctx.user.id) && project.collaborative)),
+        editable: ctx.user && (ctx.user.id === project.userId || ctx.user.role === "admin"),
+        deletable: ctx.user && (ctx.user.id === project.userId || ctx.user.role === "admin"),
+        annotable: ctx.user && (ctx.user.id === project.userId || ctx.user.role === "admin" || (project.members.some(m => ctx.user && m.userId === ctx.user.id) && project.collaborative)),
+        commentable: ctx.user && (ctx.user.id === project.userId || ctx.user.role === "admin" || (project.members.some(m => ctx.user && m.userId === ctx.user.id) && project.collaborative)),
       };
     }),
   add: protectedProcedure
@@ -227,7 +236,7 @@ export const projectRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user && ctx.user.id && ctx.requirePermissions([UserRole.Teacher, UserRole.Admin])) {
+      if (ctx.user?.id && ctx.requireRoles(['teacher', 'admin'])) {
 
         const project = await prisma.project.create({
           data: {
@@ -250,6 +259,18 @@ export const projectRouter = router({
           }
           // select: defaultPostSelect,
         });
+        const jobId = await chaptersQueue.add({ projectId: project.id });
+        await prisma.project.update({
+          where: { id: project.id },
+          data: {
+            chapterJob: {
+              connect: {
+                id: jobId.id
+              }
+            }
+          }
+        })
+        console.log("job enqueued", jobId)
         return project;
       }
     }),
@@ -266,7 +287,7 @@ export const projectRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user && ctx.user.id && ctx.requirePermissions([UserRole.Teacher, UserRole.Admin])) {
+      if (ctx.user?.id && ctx.requireRoles(['teacher', 'admin'])) {
 
         // Find the project by its ID (you need to replace 'projectId' with the actual ID)
         const project = await prisma.project.findUnique({
@@ -282,10 +303,10 @@ export const projectRouter = router({
 
         let shareCode = project.shareCode;
 
-        const newTitle = input.title != project.title ? input.title : project.title
+        const newTitle = input.title !== project.title ? input.title : project.title
 
-        if (project.shared != input.shared) {
-          if (input.shared) {
+        if (project.shared !== input.shared) {
+          if (input.shared && newTitle) {
             console.log("generate new share code with:", newTitle)
             shareCode = generateUniqueShareName(newTitle);
 
@@ -319,7 +340,7 @@ export const projectRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user && ctx.user.id && ctx.requirePermissions([UserRole.Teacher, UserRole.Admin])) {
+      if (ctx.user?.id && ctx.requireRoles(['teacher', 'admin'])) {
 
         // Find the project by its ID (you need to replace 'projectId' with the actual ID)
         const project = await prisma.project.findUnique({

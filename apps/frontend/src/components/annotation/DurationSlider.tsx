@@ -2,8 +2,8 @@ import ArrowLeftIcon from "@mui/icons-material/ArrowLeft";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import { Grid, IconButton, Stack, styled } from "@mui/material";
 import { grey } from "@mui/material/colors";
-import Slider, { SliderValueLabelProps } from "@mui/material/Slider";
-import Tooltip, { tooltipClasses, TooltipProps } from "@mui/material/Tooltip";
+import Slider, { type SliderValueLabelProps } from "@mui/material/Slider";
+import Tooltip, { tooltipClasses, type TooltipProps } from "@mui/material/Tooltip";
 import * as React from "react";
 
 import { useVideoPlayerSeekEvent } from "~hooks/use-video-player";

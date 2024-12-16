@@ -11,8 +11,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "dotenv -- turbo run dev --parallel",
-    "clean": "for package in $(ls packages); do (cd packages/${package} && yarn clean); done",
+    "dev": "dotenv -- turbo watch dev --continue",
+    "clean": "turbo clean",
     "build": "dotenv -- turbo run build --no-cache",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx",
     "prepare": "husky install",
@@ -20,12 +20,13 @@
     "test": "npx playwright test",
     "start": "pm2-runtime start ecosystem.config.js",
     "--shortcuts to run commands in workspaces--": "",
-    "frontend": "dotenv --  yarn workspace frontend",
-    "admin": "dotenv -- yarn workspace admin",
-    "backend": "dotenv -- yarn workspace backend",
-    "prisma": "dotenv -- yarn workspace @celluloid/prisma",
-    "docker-build": "DOCKER_BUILDKIT=1 docker build --build-arg APP=backend --build-arg START_COMMAND=start -t  celluloid-backend:latest --cache-from=celluloid-backend:latest  . ",
-    "docker-build-compact": "DOCKER_BUILDKIT=1 docker build -t celluloid-compact:latest -f Dockerfile.full ."
+    "frontend": "dotenv -- pnpm --filter frontend",
+    "admin": "dotenv -- pnpm --filter admin",
+    "auth": "dotenv -- pnpm --filter auth",
+    "backend": "dotenv -- pnpm --filter backend",
+    "prisma": "dotenv -- pnpm --filter @celluloid/prisma",
+    "docker:build": "docker build -t celluloid:latest .",
+    "docker:run": "docker run -it --rm --env-file .env -p 3000:3000  celluloid:latest"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.2",
@@ -52,9 +53,9 @@
     "rimraf": "^3.0.2",
     "start-server-and-test": "^2.0.1",
     "ts-jest": "^27.0.1",
-    "tsup": "^7.2.0",
-    "turbo": "^1.10.16",
-    "typescript": "^5.2.2",
+    "tsup": "^8.3.0",
+    "turbo": "^2.3.3",
+    "typescript": "catalog:",
     "wait-port": "^1.1.0"
   },
   "prettier": {
@@ -78,7 +79,6 @@
       "react-app/jest"
     ]
   },
-  "packageManager": "yarn@3.4.1",
   "engines": {
     "node": ">=20"
   },
@@ -92,5 +92,6 @@
     "dotenv-cli": "^7.3.0",
     "node-fetch": "2",
     "pm2": "^5.3.0"
-  }
+  },
+  "packageManager": "pnpm@9.15.0"
 }
