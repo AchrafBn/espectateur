@@ -6,7 +6,8 @@ concurrency:
 
 on:
   push:
-    branches: [staging]
+    branches: [staging, main]
+  workflow_dispatch:
 
 jobs:
   build-containers:
@@ -36,8 +37,9 @@ jobs:
           file: ./Dockerfile
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/espectateur:staging
+          tags: ghcr.io/${{ github.repository }}/espectateur:${{github.ref_name}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             COMMIT=${{ steps.vars.outputs.sha_short }}
+

@@ -1,5 +1,5 @@
 import "dayjs/locale/fr"; // import locale
-
+import "dayjs/locale/es"; // import locale
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -40,6 +40,7 @@ import { trpc } from "~utils/trpc";
 
 import ResetScroll from "./components/ResetScroll";
 import commonEN from "./locales/en/common.json";
+import commonES from "./locales/es/common.json";
 import commonFR from "./locales/fr/common.json";
 import { About } from "./pages/about";
 import { CreateProjectPage } from "./pages/create";
@@ -51,6 +52,7 @@ import SettingsPage from "./pages/settings";
 import { SharePage } from "./pages/share";
 import { TermsAndConditions } from "./pages/terms";
 import { createTheme } from "./theme";
+import ProjectStatsPage from "./pages/project-stats";
 
 const API_URL = "/api/trpc";
 
@@ -72,6 +74,9 @@ i18next
       },
       fr_FR: {
         translations: commonFR,
+      },
+      es_ES: {
+        translations: commonES,
       },
     },
     ns: ["translations"],
@@ -138,6 +143,10 @@ const AppRouters = () => {
           <Route path="legal-notice" element={<LegalNotice />} />
           <Route path="terms-and-conditions" element={<TermsAndConditions />} />
           <Route path="project/:projectId" element={<ProjectPage />} />
+          <Route
+            path="project/:projectId/stats"
+            element={<ProjectStatsPage />}
+          />
           <Route path="shares/:projectId" element={<SharePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
           {/* <Route path="*" element={<NotFound />} /> */}

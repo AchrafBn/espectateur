@@ -20,13 +20,20 @@ import * as Yup from "yup";
 import { useVideoPlayerProgressValue } from "~components/project/useVideoPlayer";
 import { type ProjectById, trpc, type UserMe } from "~utils/trpc";
 
+import { ConceptSelector } from "./concept-selector";
 import { DurationSlider } from "./DurationSlider";
 import {
   useAnnotationFormVisible,
   useContextualEditorPosition,
   useContextualEditorVisibleState,
   useEditAnnotation,
+  useEmotionEditor,
 } from "./useAnnotationEditor";
+import { EmotionsPalette } from "../emotion-detection/emotion-palette";
+import {
+  useAutoDetectionStore,
+  usePlayerModeStore,
+} from "../emotion-detection/store";
 
 type AnnotationFormProps = {
   duration: number;
@@ -80,6 +87,9 @@ export const AnnotationFormContent: React.FC<
 
   const videoProgress = useVideoPlayerProgressValue();
 
+  const playerMode = usePlayerModeStore((state) => state.mode);
+  const autoDetection = useAutoDetectionStore((state) => state.autoDetection);
+
   const validationSchema = Yup.object().shape({
     startTime: Yup.number(),
     stopTime: Yup.number(),
@@ -87,6 +97,7 @@ export const AnnotationFormContent: React.FC<
     text: Yup.string()
       .min(2, "Comment doit comporter minimum 5 character")
       .required("Commentaire est obligatoire"),
+    emotion: Yup.string(),
   });
 
   const formik = useFormik({
@@ -96,12 +107,14 @@ export const AnnotationFormContent: React.FC<
           stopTime: editedAnnotation.stopTime,
           pause: editedAnnotation.pause,
           text: editedAnnotation.text,
+          emotion: editedAnnotation.emotion,
         }
       : {
           startTime: videoProgress,
           stopTime: videoProgress + 600, // 10 minutes
           pause: true,
           text: "",
+          emotion: "",
         },
     validateOnMount: false,
     validationSchema: validationSchema,
@@ -131,6 +144,10 @@ export const AnnotationFormContent: React.FC<
           startTime: values.startTime,
           stopTime: values.stopTime,
           pause: values.pause,
+          emotion: values.emotion ?? undefined,
+          mode: playerMode,
+          detection: autoDetection ? "auto" : undefined,
+          // detection: values.detection,
           extra: contextualEditorPosition ? contextualEditorPosition : {},
         });
         if (newAnnotation) {
@@ -189,7 +206,7 @@ export const AnnotationFormContent: React.FC<
             value={formik.values.text}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.errors.text}
+            error={!!formik.errors.text}
             disabled={formik.isSubmitting}
             inputProps={{
               "aria-label": "Saissez votre annotation",
@@ -197,6 +214,17 @@ export const AnnotationFormContent: React.FC<
             }}
           />
         </Box>
+
+        <EmotionsPalette
+          emotion={formik.values.emotion}
+          projectId={project.id}
+          semiAutoAnnotation={false}
+          semiAutoAnnotationMe={false}
+          position={videoProgress}
+          onEmotionChange={(emotion) => {
+            formik.setFieldValue("emotion", emotion);
+          }}
+        />
 
         <Box
           display={"flex"}
@@ -209,7 +237,7 @@ export const AnnotationFormContent: React.FC<
                 label="Contexte"
                 sx={{ color: "white" }}
                 checked={contextEditorVisible}
-                onChange={(_, v) =>
+                onChange={() =>
                   setContextualEditorVisible(!contextEditorVisible)
                 }
                 control={
@@ -241,6 +269,7 @@ export const AnnotationFormContent: React.FC<
               />
             </Tooltip>
           </Box>
+          <ConceptSelector />
           <Box sx={{ marginY: 1 }}>
             <Button
               size="small"

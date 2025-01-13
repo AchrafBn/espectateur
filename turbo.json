@@ -20,10 +20,15 @@
     },
     "clean": {
       "cache": false
+    },
+    "prisma:generate": {
+      "cache": false,
+      "outputs": []
     }
   },
   "globalEnv": [
     "BASE_URL",
+    "PORT",
     "NODE_ENV",
     "DATABASE_URL",
     "REDIS_URL",
